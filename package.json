@@ -1,0 +1,14 @@
+{
+  "name": "resumeable-stream",
+  "version": "1.0.0",
+  "description": "Resume a stream when an error occurred",
+  "main": "src/index.ts",
+  "license": "MIT",
+  "author": "jaeyoung.choi <lactrious@gmail.com>",
+  "devDependencies": {
+    "@types/node": "8",
+    "tslint": "^5.14.0",
+    "tslint-config-prettier": "^1.18.0",
+    "typescript": "^3.3.4000"
+  }
+}
