@@ -4,9 +4,6 @@
     "exclude": ["node_modules", "dist"]
   },
   "rules": {
-    "object-literal-sort-keys": false,
-    "interface-name": false,
-    "max-classes-per-file": false,
-    "no-console": false
+    "interface-name": false
   }
 }
