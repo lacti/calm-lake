@@ -1,12 +1,12 @@
 import { DataCallback, ErrorCallback } from "./callback";
 import Controller from "./controller";
-import { StreamProxyFactory } from "./stream";
+import { StreamProxyConstructor } from "./stream";
 import { logger } from "./utils";
 
 /**
  * TBU
  */
-export default class Proxy<T, R> {
+export default class CalmLake<T, R> {
   private readonly controller: Controller<T, R>;
   private initial: boolean = true;
   private running: boolean = true;
@@ -15,17 +15,17 @@ export default class Proxy<T, R> {
   /**
    * TBU
    *
-   * @param factory
+   * @param proxyConstructor
    * @param dataCallback
    * @param errorCallback
    */
   constructor(
-    factory: StreamProxyFactory<T, R>,
+    proxyConstructor: StreamProxyConstructor<T, R>,
     dataCallback: DataCallback<R>,
     errorCallback?: ErrorCallback
   ) {
     this.controller = new Controller<T, R>(
-      factory,
+      proxyConstructor,
       dataCallback,
       this.onReady,
       errorCallback

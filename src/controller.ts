@@ -1,40 +1,58 @@
 import { DataCallback, ErrorCallback, VoidCallback } from "./callback";
 import {
   StreamProxy,
-  StreamProxyController,
-  StreamProxyFactory
+  StreamProxyConstructor,
+  StreamProxyController
 } from "./stream";
-import { logger, nextDo as doNextTurn } from "./utils";
+import { logger, postCall } from "./utils";
 
 /**
- * A controller to manage a stream proxy object safely,
+ * A controller to manage a stream proxy safely,
  * and renew that if something is wrong, for example, an exception occurred while sending a data.
  */
 export default class Controller<T, R> implements StreamProxyController {
+  /**
+   * A state of that it can send a data via a stream proxy or not.
+   */
   public get ready() {
     return this.running && this.proxy != null;
   }
+
+  /**
+   * A reference of actual stream proxy that can be replaced using `goNextProxy` method.
+   * So it is nullable.
+   */
   private proxy: StreamProxy<T, R> | null = null;
+
+  /**
+   * It would be false when it calls `destroy` method.
+   * After that, all operations would be ignored.
+   */
   private running: boolean = true;
+
+  /**
+   * It would be true while processing of `goNextProxy`.
+   * Because of this, it can coalesce many of `goNextProxy` calls.
+   */
   private goingToNextProxy: boolean = false;
 
   constructor(
-    private readonly factory: StreamProxyFactory<T, R>,
+    private readonly proxyConstructor: StreamProxyConstructor<T, R>,
     private readonly onData: DataCallback<R>,
     private readonly onReady: VoidCallback,
     private readonly maybeOnError?: ErrorCallback
   ) {}
 
   /**
-   * Try to create a new stream proxy object  and call a `onReady` callback after that.
-   * It will execute an actual work at next tick because it uses `doNextTurn` function.
+   * Try to create a new stream proxy  and call a `onReady` callback after that.
+   * It will execute an actual work at next tick because it uses `postCall` function.
    *
    * Note:
-   * A factory method is asynchronous function so it should be careful
+   * A constructor is asynchronous function so it should be careful
    * about overlapped execution to avoid a concurrency issue.
    */
   public goNextProxy = () =>
-    doNextTurn(async () => {
+    postCall(async () => {
       if (!this.running) {
         logger.debug(
           `[SSP][Controller]`,
@@ -54,18 +72,18 @@ export default class Controller<T, R> implements StreamProxyController {
         this.destroyCurrentProxy();
         logger.debug(
           `[SSP][Controller]`,
-          `Try to create a new stream proxy object by a factory.`
+          `Try to create a new stream proxy by a constructor.`
         );
-        this.proxy = await this.factory.newProxy(this);
+        this.proxy = await this.proxyConstructor(this);
         logger.debug(
           `[SSP][Controller]`,
-          `A new stream proxy object is created by a factory.`
+          `A new stream proxy is created by a constructor.`
         );
 
         if (!this.running) {
           logger.debug(
             `[SSP][Controller]`,
-            `Destroy a new stream proxy object because it is halted.`
+            `Destroy a new stream proxy because it is halted.`
           );
           this.destroyCurrentProxy();
           return;
@@ -78,7 +96,7 @@ export default class Controller<T, R> implements StreamProxyController {
           `[SSP][Controller]`,
           `Post a "onReady" signal to the outside.`
         );
-        doNextTurn(this.onReady);
+        postCall(this.onReady);
       } catch (error) {
         this.onError(error);
 
@@ -90,11 +108,11 @@ export default class Controller<T, R> implements StreamProxyController {
     });
 
   /**
-   * Send a data into a stream proxy object with below process.
+   * Send a data into a stream proxy with below process.
    *
    * 1. Send a data into `this.proxy` object if it exists.
    * 2. If failed to send, retry with `goNextProxy` in `onProxyError` method.
-   * 3. If there is no stream proxy object, create a new one via `goNextProxy` method.
+   * 3. If there is no stream proxy, create a new one via `goNextProxy` method.
    */
   public send = (data: T) => {
     if (!this.running) {

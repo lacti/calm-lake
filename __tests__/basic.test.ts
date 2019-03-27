@@ -4,8 +4,7 @@ import StableStreamProxy, {
   DataCallback,
   ErrorCallback,
   StreamProxy,
-  StreamProxyController,
-  StreamProxyFactory
+  StreamProxyController
 } from "../src";
 
 process.env.SSP_DEBUG = "1";
@@ -51,24 +50,18 @@ class NumberToStringStream implements StreamProxy<number, string> {
   public onError = (callback: ErrorCallback) => (this.errorCallback = callback);
 }
 
-class NumberToStringStreamFactory
-  implements StreamProxyFactory<number, string> {
-  public newProxy = async (controller: StreamProxyController) => {
-    console.log(`Factory CreateNew stream`);
-    return new NumberToStringStream(controller);
-  };
-}
+const newProxy = async (controller: StreamProxyController) => {
+  console.log(`Factory CreateNew stream`);
+  return new NumberToStringStream(controller);
+};
 
 const sleep = (millis: number) =>
   new Promise<void>(resolve => setTimeout(resolve, millis));
 
 test("basic", async () => {
-  const stable = new StableStreamProxy(
-    new NumberToStringStreamFactory(),
-    data => {
-      console.log(data);
-    }
-  );
+  const stable = new StableStreamProxy(newProxy, data => {
+    console.log(data);
+  });
   for (let i = 0; i < 10; ++i) {
     console.log(`Push Data(${i})`);
     stable.send(i);

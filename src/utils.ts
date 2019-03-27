@@ -4,7 +4,7 @@
  *
  * @param actualWork The actual work to run in next tick.
  */
-export const nextDo = <R>(actualWork: () => R | Promise<R>) =>
+export const postCall = <R>(actualWork: () => R | Promise<R>) =>
   new Promise<R>((resolve, reject) =>
     setImmediate(async () => {
       try {

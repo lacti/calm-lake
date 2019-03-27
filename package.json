@@ -1,5 +1,5 @@
 {
-  "name": "resumeable-stream",
+  "name": "calm-lake",
   "version": "1.0.0",
   "description": "Resume a stream when an error occurred",
   "main": "src/index.ts",
@@ -7,7 +7,6 @@
   "author": "jaeyoung.choi <lactrious@gmail.com>",
   "devDependencies": {
     "@types/jest": "^24.0.11",
-    "@types/node": "8",
     "jest": "^24.5.0",
     "ts-jest": "^24.0.0",
     "tslint": "^5.14.0",

@@ -8,7 +8,7 @@ import { DataCallback, ErrorCallback } from "./callback";
 export interface StreamProxyController {
   /**
    * From the many situation, for example, an error occurred or manually requested,
-   * it should prepare a new next stream proxy object to use it instead of the old one.
+   * it should prepare a new next stream proxy to use it instead of the old one.
    *
    * In most cases, this method is called from `Controller` automatically to retry
    * to send a data when some error occurred, but there can be a case that call this method
@@ -18,19 +18,14 @@ export interface StreamProxyController {
 }
 
 /**
- * A factory to create a `StreamProxy` from a `StreamProxyController`.
+ * A constructor to create a `StreamProxy` from a `StreamProxyController`.
  *
  * @template T A type of data to send.
  * @template R A type of data to receive.
  */
-export interface StreamProxyFactory<T, R> {
-  /**
-   * A constructor to create a new stream proxy object.
-   * It can pass a `controller` object to a stream proxy object because
-   * it can request to go a next proxy object manually in some circumstances.
-   */
-  newProxy: (controller: StreamProxyController) => Promise<StreamProxy<T, R>>;
-}
+export type StreamProxyConstructor<T, R> = (
+  controller: StreamProxyController
+) => Promise<StreamProxy<T, R>>;
 
 /**
  * A stream proxy that can send a data or receive a data from the opposite side.
