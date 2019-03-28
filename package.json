@@ -2,7 +2,8 @@
   "name": "calm-lake",
   "version": "1.0.0",
   "description": "Resume a stream when an error occurred",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "license": "MIT",
   "author": "jaeyoung.choi <lactrious@gmail.com>",
   "devDependencies": {
