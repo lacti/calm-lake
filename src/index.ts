@@ -1,5 +1,3 @@
-import StreamStableProxy from "./lake";
+export * from "./lake";
 export * from "./stream";
-export * from "./callback";
-
-export default StreamStableProxy;
+export * from "./event";

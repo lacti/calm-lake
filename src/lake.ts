@@ -1,7 +1,15 @@
-import { DataCallback, ErrorCallback } from "./callback";
 import Controller from "./controller";
+import { EventBroker } from "./event";
 import { StreamProxyConstructor } from "./stream";
 import { logger } from "./utils";
+
+/**
+ * An event map for `CalmLake`.
+ */
+interface CalmLakeEventMap<R> {
+  data: R;
+  error: Error;
+}
 
 /**
  * A simple helper for do these.
@@ -9,7 +17,10 @@ import { logger } from "./utils";
  * 1. Manage a stream proxy when it is broken.
  * 2. Keep data into the buffer and resend them.
  */
-export default class CalmLake<T, R> {
+export class CalmLake<T, R> extends EventBroker<CalmLakeEventMap<R>> {
+  /**
+   * A controller to manage a stream proxy.
+   */
   private readonly controller: Controller<T, R>;
 
   /**
@@ -33,20 +44,20 @@ export default class CalmLake<T, R> {
    * Create a new `CalmLake` with a constructor of a stream proxy.
    *
    * @param proxyConstructor A constructor to create a new stream proxy.
-   * @param dataCallback A callback to retrieve a data from the opposite of a stream proxy.
-   * @param errorCallback A callback to retrieve an error from this system.
    */
-  constructor(
-    proxyConstructor: StreamProxyConstructor<T, R>,
-    dataCallback: DataCallback<R>,
-    errorCallback?: ErrorCallback
-  ) {
-    this.controller = new Controller<T, R>(
-      proxyConstructor,
-      dataCallback,
-      this.onReady,
-      errorCallback
-    );
+  constructor(proxyConstructor: StreamProxyConstructor<T, R>) {
+    super();
+    this.controller = new Controller<T, R>(proxyConstructor)
+      .on("data", data => this.fire("data", data))
+      .on("error", error => this.fire("error", error))
+      .on("ready", this.onReady);
+  }
+
+  /**
+   * Check if the buffer is empty.
+   */
+  public get empty() {
+    return this.buffer.length === 0;
   }
 
   /**
@@ -123,3 +134,6 @@ export default class CalmLake<T, R> {
     this.flush();
   };
 }
+
+export const calm = <T, R>(proxyConstructor: StreamProxyConstructor<T, R>) =>
+  new CalmLake<T, R>(proxyConstructor);

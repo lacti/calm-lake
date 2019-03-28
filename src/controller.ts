@@ -1,4 +1,4 @@
-import { DataCallback, ErrorCallback, VoidCallback } from "./callback";
+import { EventBroker } from "./event";
 import {
   StreamProxy,
   StreamProxyConstructor,
@@ -7,10 +7,20 @@ import {
 import { logger, postCall } from "./utils";
 
 /**
+ * An event map for `Controller`.
+ */
+interface ControllerEventMap<R> {
+  data: R;
+  ready: void;
+  error: Error;
+}
+
+/**
  * A controller to manage a stream proxy safely,
  * and renew that if something is wrong, for example, an exception occurred while sending a data.
  */
-export default class Controller<T, R> implements StreamProxyController {
+export default class Controller<T, R> extends EventBroker<ControllerEventMap<R>>
+  implements StreamProxyController {
   /**
    * A state of that it can send a data via a stream proxy or not.
    */
@@ -40,16 +50,10 @@ export default class Controller<T, R> implements StreamProxyController {
    * Create a new controller to make a stream proxy to be stable.
    *
    * @param proxyConstructor A constructor to create a stream proxy.
-   * @param onData A callback to retrieve a data from the opposite of a stream proxy.
-   * @param onReady A callback to retrieve a signal that a stream proxy is ready to send.
-   * @param onErrorOrUndefined A callback to retrieve an error from a stream proxy.
    */
-  constructor(
-    private readonly proxyConstructor: StreamProxyConstructor<T, R>,
-    private readonly onData: DataCallback<R>,
-    private readonly onReady: VoidCallback,
-    private readonly onErrorOrUndefined?: ErrorCallback
-  ) {}
+  constructor(private readonly proxyConstructor: StreamProxyConstructor<T, R>) {
+    super();
+  }
 
   /**
    * Try to create a new stream proxy  and call a `onReady` callback after that.
@@ -96,15 +100,17 @@ export default class Controller<T, R> implements StreamProxyController {
           this.destroyCurrentProxy();
           return;
         }
-        this.proxy.onError(this.onProxyError);
-        this.proxy.onData(this.onData);
+        this.proxy.on("error", this.onProxyError);
+        this.proxy.on("data", data => this.fire("data", data));
 
         // Fire "onReady" handler and forget.
         logger.debug(
           `[SSP][Controller]`,
           `Post a "onReady" signal to the outside.`
         );
-        postCall(this.onReady);
+        postCall(() => {
+          this.fire("ready", undefined);
+        });
       } catch (error) {
         this.onError(error);
 
@@ -173,7 +179,9 @@ export default class Controller<T, R> implements StreamProxyController {
     this.proxy = null;
     try {
       logger.debug(`[SSP][Controller]`, `Destroy the old proxy object.`);
-      oldProxy.destroy();
+      if (oldProxy.destroy) {
+        oldProxy.destroy();
+      }
     } catch (error) {
       this.onError(error);
     }
@@ -184,13 +192,12 @@ export default class Controller<T, R> implements StreamProxyController {
    * or `logger.warn` if there is no callback.
    */
   private onError = (error: Error) => {
-    if (this.onErrorOrUndefined) {
+    if (this.fire("error", error)) {
       logger.debug(
         `[SSP][Controller]`,
         `Propergate an error to the outside.`,
         error
       );
-      this.onErrorOrUndefined(error);
     } else {
       logger.warn(`[SSP][Controller] Error`, error);
     }

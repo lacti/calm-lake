@@ -1,4 +1,4 @@
-import { DataCallback, ErrorCallback } from "./callback";
+import { EventBroker, EventListenable } from "./event";
 
 /**
  * A stream proxy controller to manage a stream proxy as stable.
@@ -28,6 +28,16 @@ export type StreamProxyConstructor<T, R> = (
 ) => Promise<StreamProxy<T, R>>;
 
 /**
+ * An event map for a stream proxy.
+ *
+ * @template R A type of data to receive.
+ */
+export interface StreamProxyEvent<R> {
+  data: R;
+  error: Error;
+}
+
+/**
  * A stream proxy that can send a data or receive a data from the opposite side.
  * It can be destroyable to cleanup its resource and throwable an error to
  * retry sending process from `StreamProxyController`.
@@ -35,7 +45,8 @@ export type StreamProxyConstructor<T, R> = (
  * @template T A type of data to send.
  * @template R A type of data to receive.
  */
-export interface StreamProxy<T, R> {
+export interface StreamProxy<T, R>
+  extends EventListenable<StreamProxyEvent<R>> {
   /**
    * Send a data to the actual stream.
    */
@@ -44,17 +55,23 @@ export interface StreamProxy<T, R> {
   /**
    * Destroy any resources related the actual stream.
    */
-  destroy: () => void;
+  destroy?: () => void;
+}
+
+/**
+ * A simple base class to support a basic scaffolding of `StreamProxy<T, R>`
+ * with `EventBroker` of `StreamProxyEvent<R>`.
+ */
+export abstract class BasicStreamProxy<T, R>
+  extends EventBroker<StreamProxyEvent<R>>
+  implements StreamProxy<T, R> {
+  /**
+   * Send a data to the actual stream.
+   */
+  public send: (data: T) => void;
 
   /**
-   * If there is a data from the opposite of actual stream,
-   * it can be passed back to the stable side.
+   * Destroy any resources related the actual stream.
    */
-  onData: (callback: DataCallback<R>) => void;
-
-  /**
-   * If there is an error occured from the actual stream,
-   * it can be passed back to the controller side to manage a stream proxy as stable.
-   */
-  onError: (callback: ErrorCallback) => void;
+  public destroy?: () => void;
 }

@@ -1,70 +1,68 @@
-// tslint:disable max-classes-per-file no-console
+import { BasicStreamProxy, calm, StreamProxyController } from "../src";
+import { logger } from "../src/utils";
 
-import StableStreamProxy, {
-  DataCallback,
-  ErrorCallback,
-  StreamProxy,
-  StreamProxyController
-} from "../src";
+// process.env.SSP_DEBUG = "1";
 
-process.env.SSP_DEBUG = "1";
+class NumberToStringStream extends BasicStreamProxy<number, string> {
+  private static streamSerial: number = 0;
 
-let streamSerial = 0;
-class NumberToStringStream implements StreamProxy<number, string> {
-  private dataCallback: DataCallback<string>;
-  private errorCallback: ErrorCallback;
   constructor(
     private readonly controller: StreamProxyController,
-    private readonly serial: number = ++streamSerial
-  ) {}
+    private readonly serial: number = ++NumberToStringStream.streamSerial // Only for debugging purpose.
+  ) {
+    super();
+  }
 
   public send = (data: number) => {
+    // Inovke going a next proxy manually.
     if (data % 2 === 0) {
-      console.log(
+      logger.debug(
         `Stream[${this.serial}] Data(${data}) Request to a next proxy.`
       );
       this.controller.goNextProxy();
     }
-    console.log(`Stream[${this.serial}] Process(${data})`);
-    if (Math.random() < 0.3) {
+    logger.debug(`Stream[${this.serial}] Process(${data})`);
+
+    // Maybe, an error can be occurred while processing something.
+    if (Math.random() < 0.2) {
       throw new Error("What?");
     }
+
+    // Fire a processed data or an error.
     try {
-      if (this.dataCallback) {
-        this.dataCallback((-data).toString());
-      }
+      this.fire("data", data.toString());
     } catch (error) {
-      if (this.errorCallback) {
-        this.errorCallback(error);
-      }
+      this.fire("error", error);
       this.controller.goNextProxy();
     }
   };
   public destroy = () => {
-    // do nothing
-    console.log(`Stream[${this.serial}] Destroyed.`);
+    logger.debug(`Stream[${this.serial}] Destroyed.`);
   };
-
-  public onData = (callback: DataCallback<string>) =>
-    (this.dataCallback = callback);
-  public onError = (callback: ErrorCallback) => (this.errorCallback = callback);
 }
-
-const newProxy = async (controller: StreamProxyController) => {
-  console.log(`Factory CreateNew stream`);
-  return new NumberToStringStream(controller);
-};
 
 const sleep = (millis: number) =>
   new Promise<void>(resolve => setTimeout(resolve, millis));
 
 test("basic", async () => {
-  const stable = new StableStreamProxy(newProxy, data => {
-    console.log(data);
-  });
-  for (let i = 0; i < 10; ++i) {
-    console.log(`Push Data(${i})`);
-    stable.send(i);
-    await sleep(10);
+  // Initialize lake with a constructor of a stream proxy.
+  let result = 0;
+  const lake = calm(async controller => {
+    logger.debug(`Create a new stream proxy.`);
+    return new NumberToStringStream(controller);
+  }).on("data", data => (result += +data));
+
+  // Send all data into a lake.
+  const n = 100;
+  for (let i = 1; i <= n; ++i) {
+    logger.debug(`Push Data(${i})`);
+    lake.send(i);
+    await sleep(1);
   }
+  // Wait until all data in the buffer is flushed.
+  while (!lake.empty) {
+    await sleep(1);
+  }
+  // All data should be passed into the opposite of a stream proxy.
+  expect(result).toBe((n * (n + 1)) / 2);
 });
