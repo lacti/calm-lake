@@ -11,6 +11,14 @@ interface CalmLakeEventMap<R> {
   error: Error;
 }
 
+interface CalmLakeOptions {
+  maxBufferSize: number;
+}
+
+const defaultOptions: CalmLakeOptions = {
+  maxBufferSize: 65536
+};
+
 /**
  * A simple helper for do these.
  *
@@ -41,16 +49,25 @@ export class CalmLake<T, R> extends EventBroker<CalmLakeEventMap<R>> {
   private buffer: T[] = [];
 
   /**
+   * Options for lake such as `maxBufferSize`.
+   */
+  private readonly options: CalmLakeOptions;
+
+  /**
    * Create a new `CalmLake` with a constructor of a stream proxy.
    *
    * @param proxyConstructor A constructor to create a new stream proxy.
    */
-  constructor(proxyConstructor: StreamProxyConstructor<T, R>) {
+  constructor(
+    proxyConstructor: StreamProxyConstructor<T, R>,
+    options?: Partial<CalmLakeOptions>
+  ) {
     super();
     this.controller = new Controller<T, R>(proxyConstructor)
       .on("data", data => this.fire("data", data))
       .on("error", error => this.fire("error", error))
       .on("ready", this.onReady);
+    this.options = { ...options, ...defaultOptions };
   }
 
   /**
@@ -63,10 +80,16 @@ export class CalmLake<T, R> extends EventBroker<CalmLakeEventMap<R>> {
   /**
    * Try to send a data via a stream proxy, first.
    * If can't, keep it into the buffer and retry later at `flush` method.
+   *
+   * Note: If the buffer is full by `maxBufferSize`, it will throw an error
+   * named as "BufferOverflow".
    */
   public send = (data: T) => {
     if (!this.running) {
       return false;
+    }
+    if (this.buffer.length >= this.options.maxBufferSize) {
+      throw new Error("BufferOverflow");
     }
     this.buffer.push(data);
 
@@ -82,6 +105,14 @@ export class CalmLake<T, R> extends EventBroker<CalmLakeEventMap<R>> {
     }
     // Anyway, it send this data now or later.
     return true;
+  };
+
+  /**
+   * Reset data in the buffer and go a next stream proxy.
+   */
+  public reset = () => {
+    this.buffer = [];
+    this.controller.goNextProxy();
   };
 
   /**
@@ -135,5 +166,7 @@ export class CalmLake<T, R> extends EventBroker<CalmLakeEventMap<R>> {
   };
 }
 
-export const calm = <T, R>(proxyConstructor: StreamProxyConstructor<T, R>) =>
-  new CalmLake<T, R>(proxyConstructor);
+export const calm = <T, R>(
+  proxyConstructor: StreamProxyConstructor<T, R>,
+  options?: Partial<CalmLakeOptions>
+) => new CalmLake<T, R>(proxyConstructor, options);
