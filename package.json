@@ -1,11 +1,29 @@
 {
   "name": "calm-lake",
-  "version": "1.0.0",
-  "description": "Resume a stream when an error occurred",
+  "version": "0.1.0",
+  "description": "A stable stream with a buffer like calm lake.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
   "author": "jaeyoung.choi <lactrious@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/lacti/calm-lake.git"
+  },
+  "keywords": [
+    "stable",
+    "stream",
+    "buffer"
+  ],
+  "bugs": {
+    "url": "https://github.com/lacti/calm-lake/issues"
+  },
+  "homepage": "https://github.com/lacti/calm-lake#readme",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "prepublishOnly": "yarn test && yarn build"
+  },
   "devDependencies": {
     "@types/jest": "^24.0.11",
     "jest": "^24.5.0",
