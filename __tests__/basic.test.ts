@@ -65,6 +65,6 @@ test("basic", async () => {
   for (let i = 0; i < 10; ++i) {
     console.log(`Push Data(${i})`);
     stable.send(i);
-    await sleep(100);
+    await sleep(10);
   }
 });

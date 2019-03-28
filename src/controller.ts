@@ -36,11 +36,19 @@ export default class Controller<T, R> implements StreamProxyController {
    */
   private goingToNextProxy: boolean = false;
 
+  /**
+   * Create a new controller to make a stream proxy to be stable.
+   *
+   * @param proxyConstructor A constructor to create a stream proxy.
+   * @param onData A callback to retrieve a data from the opposite of a stream proxy.
+   * @param onReady A callback to retrieve a signal that a stream proxy is ready to send.
+   * @param onErrorOrUndefined A callback to retrieve an error from a stream proxy.
+   */
   constructor(
     private readonly proxyConstructor: StreamProxyConstructor<T, R>,
     private readonly onData: DataCallback<R>,
     private readonly onReady: VoidCallback,
-    private readonly maybeOnError?: ErrorCallback
+    private readonly onErrorOrUndefined?: ErrorCallback
   ) {}
 
   /**
@@ -176,13 +184,13 @@ export default class Controller<T, R> implements StreamProxyController {
    * or `logger.warn` if there is no callback.
    */
   private onError = (error: Error) => {
-    if (this.maybeOnError) {
+    if (this.onErrorOrUndefined) {
       logger.debug(
         `[SSP][Controller]`,
         `Propergate an error to the outside.`,
         error
       );
-      this.maybeOnError(error);
+      this.onErrorOrUndefined(error);
     } else {
       logger.warn(`[SSP][Controller] Error`, error);
     }
